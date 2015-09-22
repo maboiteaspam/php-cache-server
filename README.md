@@ -10,3 +10,4 @@ Hey, it s only for DEV, ok ? It s blocking, slow, wrote in php blah blah ect. Bu
 
 ## misc
 
+Using it to avoid file caching, but more persistent than array cache.
