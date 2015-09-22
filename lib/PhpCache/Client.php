@@ -17,10 +17,9 @@ class Client {
         $socket = socket_create(AF_INET, SOCK_STREAM, SOL_TCP);
         if (!$socket) return false;
 
-        $result = socket_connect($socket, $this->host, $this->port);
-        if (!$result) return false;
+        if (!socket_connect($socket, $this->host, $this->port)) return false;
 
-        $this->socket = $result;
+        $this->socket = $socket;
         return true;
     }
     public function close () {
@@ -31,18 +30,31 @@ class Client {
     public function write ($data) {
         if (!$this->socket) return false;
         $writtenBytes = socket_write($this->socket, $data, strlen($data));
+        if ($writtenBytes!==false) {
+            socket_write($this->socket, "\0", strlen("\0"));
+        }
         return $writtenBytes!==false;
     }
     public function read ($bufLen=2048) {
         if (!$this->socket) return false;
-        $read = null;
-        while ($data = socket_read($this->socket, $bufLen, PHP_BINARY_READ)) {
-            $read .= $data;
-        }
-        return $read===null?false:$read;
+
+        $data = NULL;
+        $keepReading = true;
+        do {
+            $buf = socket_read($this->socket, $bufLen, PHP_BINARY_READ);
+            if ($buf===false || $buf==="" || substr($buf, -strlen("\0"))==="\0") {
+                // end of message
+                $keepReading = false;
+            } else {
+                $data .= $buf;
+            }
+        } while ($keepReading);
+        $data = substr($data, 0, -strlen("\0"));
+        return $data===null?false:$data;
     }
     public function sendCmd ($cmd, $data) {
         if (!$this->socket) return false;
+        $data = serialize($data);
         if ($this->write("$cmd $data")) {
             return $this->read();
         }
